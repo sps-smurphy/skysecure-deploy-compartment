@@ -1,0 +1,14 @@
+Tanium-OUT-TCP-17472-BASE    
+Tanium-IN-TCP-17472-BASE     
+ssh-in                       
+SNMP-OUT-UDP-161-BASE        
+SNMP-IN-UDP-161-BASE         
+SMTP-OUT-TCP-25-BASE         
+Salt-OUT-TCP-4505-4506-BASE  
+RSYSLOG-OUT-TCP-514-BASE     
+NTP-OUT-UDP-123-BASE         
+ICMP-OUT-BASE                
+HTTPS-OUT-TCP-443-BASE       
+HTTP-OUT-TCP-80-BASE         
+Graphical-Console            
+EnCase-IN-TCP-6624-BASE      

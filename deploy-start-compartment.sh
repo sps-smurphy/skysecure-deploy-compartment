@@ -16,10 +16,18 @@ showEnts
 echo
 sleep 5
 echo "################################  STARTING COMPARTMENT  #############################################"
-ssc compartments start --identifier $COMPARTMENT --force
+ssc compartments start --identifier $COMPARTMENT #--force
 echo
-sleep 5
-ssc compartments show --compartment-name $COMPARTMENT | grep 'Status' | grep -v -e 'Entitlement Name'
+
+# Check to see the status of the compartment as it starts
+
+while [[ "$STATUS" != "Status          : Ok - Working properly" ]]; do
+    STATUS=$(ssc compartments show --compartment-name $COMPARTMENT | awk '/Status/ && /:/')
+    echo -ne "$STATUS\033[0K\r"
+    sleep 5
+done
+echo "Status          : Ok - Working properly"
+
 
 
 

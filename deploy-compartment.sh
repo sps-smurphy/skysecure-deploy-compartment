@@ -33,14 +33,7 @@ sleep 1
 
 # CHECK Compartment VALIDITY  -  Checks if compartment already exists
 
-COMPARTMENT_LIST=$(ssc compartments show --columns 'Compartment Name' | grep -m1 -e "$COMPARTMENT")
-
-if [[ "${COMPARTMENT_LIST}" == *"${COMPARTMENT}"* ]]; then
-    echo "  COMPARTMENT CHECK  ====  INVALID COMPARTMENT NAME: Compartment name already exists"; sleep 1
-    INVALID_INPUT=1
-else
-    echo "  COMPARTMENT CHECK  ====  VALID COMPARTMENT ($COMPARTMENT)"; sleep 1   
-fi
+check_compartment_validity $COMPARTMENT
 
 # CHECK Server VALIDITY  -  Check if server exists in the enterprise
 

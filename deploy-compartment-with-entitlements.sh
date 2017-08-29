@@ -21,7 +21,7 @@ sh ./deploy-compartment.sh $COMPARTMENT $SERVER $DATACENTER $APP
 
 failure_check
 ############################# DEPLOY BASE ENTITLEMENTS #############################
-sh ./deploy-base-entitlements.sh $COMPARTMENT $SERVER $DATACENTER $APP 
+sh ./deploy-base-entitlements.sh $COMPARTMENT $APP 
 
 failure_check
 ############################  DEPLOY APP ENTITLEMENTS  #############################

@@ -4,11 +4,22 @@
 
 ##########################  Set Variables  ############################
 COMPARTMENT=$1
-
+COMPARTMENT_LIST=$(ssc compartments show --columns 'Compartment Name' | grep -m1 -e "$COMPARTMENT")
+INVALID_INPUT=0
 ################################ ACTIONS ################################
 # Check SSC CLI version
 check_cli_version
 sleep 1
+
+# Check if compartment exists and fail if it does not exist
+
+if [[ "${COMPARTMENT_LIST}" == *"${COMPARTMENT}"* ]]; then
+    echo
+    echo "  Compartment $COMPARTMENT exists and is valid!!"
+else
+    echo;echo "Compartment doesn't exist.  Please check the spelling and retry."
+    exit 2
+fi
 
 # Backup existing entitlements
 backup_ents_to_file $COMPARTMENT

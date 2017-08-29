@@ -4,11 +4,11 @@
 
 ##############################  Set Variables  ############################
 
-COMPARTMENT=$1         # Compartment name
-APP=${2^^}             # Application name (Currently BASE, SPLUNK, or JIRA)
+COMPARTMENT=$1              # Compartment name
+APP=${2^^}                  # Application name (Currently BASE, SPLUNK, or JIRA)
 
-GROUP="$APP"
-FILE="./configs/$APP.csv"
+GROUP="$APP"                # Set group these entitlements will be part of
+FILE="./configs/$APP.csv"   # Location of file containing APP entitlements
 ################################# ACTIONS #################################
 
 # Check to see if the compartment is BASE only
@@ -17,31 +17,27 @@ if [ "$APP" == "BASE" ]; then
     exit 0
 fi
 ######################  DEPLOY APP ENTITLEMENTS  #########################
-echo; echo; echo; echo
+echo; echo; echo
 echo "############################## CREATING $APP ENTITLEMENTS ##########################################"
 sleep 1
+# Read entitlements line by line from config file
+# Configuration file format: APPLICATION(0);PROTOCOL(1);PORT(2);DIRECTION(3);TARGET(4)
 
-while IFS= read -a LINE; do
-    APPLICATION="$(echo $LINE | awk -F';' '{print $1}')"
-    PROTO="$(echo $LINE | awk -F';' '{print $2}')"
-    PORT="$(echo $LINE | awk -F';' '{print $3}')"
-    DIRECTION="$(echo $LINE | awk -F';' '{print $4}')"
-    TARGET="$(echo $LINE | awk -F';' '{print $5}')"
-
-    echo
-    if [[ ${APPLICATION} == *"ssh"* ]]; then
-        createSSHRule $LINE
-    elif [[ $PROTO == "ICMP" ]]; then
-        createICMPRule $LINE
-    else
-        createNetRule $LINE
-    fi
+while IFS=';' read -r -a LINE; do
+    echo ${LINE[0]} ${LINE[1]} ${LINE[2]} ${LINE[3]} ${LINE[4]}
+        if [[ ${LINE[0]} == *"ssh"* ]]; then
+            createSSHRule $LINE
+        elif [[ ${LINE[1]} == "ICMP" ]]; then
+            createICMPRule $LINE
+        else
+            createNetRule $LINE
+        fi
 done < $FILE
 
 echo
 echo "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  DONE CREATING $APP ENTITLEMENTS  >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 echo
-sleep 3
+sleep 2
 
 
 

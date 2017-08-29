@@ -2,7 +2,45 @@
 #
 #########################  FUNCTIONS  #####################################
 
-####################  Create Secure Console  ##############################
+#####################  Set Security Posture  ##############################
+
+function set_security_posture {
+
+	COMPARTMENT=$1
+	SECURITY_POSTURE=$2
+
+
+	case $SECURITY_POSTURE in
+		"whitelist-mode")
+			echo
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			echo "                      SETTING SECURITY POSTURE TO WHITELIST MODE"
+			ssc compartments set-security-posture --compartment-name $COMPARTMENT --whitelist-mode
+			echo;sleep 1
+			;;
+		"firewall-mode")
+			echo
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			echo "                      SETTING SECURITY POSTURE TO FIREWALL MODE"
+			ssc compartments set-security-posture --compartment-name $COMPARTMENT --firewall-mode
+			echo;sleep 1
+			;;
+		"observation-mode")
+			echo
+			echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+			echo "                      SETTING SECURITY POSTURE TO OBSERVATION MODE"
+			ssc compartments set-security-posture --compartment-name $COMPARTMENT --observation-mode
+			echo;sleep 1
+			;;
+	esac
+	if [ $? != 0 ]; then
+		echo "  !!! FAILED TO SET SECURITY POSTURE !!!"; echo
+		FAILED_WITH_ERRORS=1
+	fi
+}
+
+
+##########################  Create Secure Console  ##############################
 
 function create_secure_console {
 
@@ -19,21 +57,18 @@ function create_secure_console {
 	fi
 }
 
-
 ###################  Create AD Client Server Role  #######################
 
 function create_AD_client {
 
 	COMPARTMENT=$1
-	DOMAIN="corp.intuit.net"
-	FILTER=""
+	DOMAIN=$2
 	
 	echo; echo " Creating.... ACTIVE DIRECTORY CLIENT Role"
 
         ssc compartments add-active-directory \
         --compartment-name $COMPARTMENT \
-        --domain-name intuit.com \
-		--ip-filters $FILTER
+        --domain-name $DOMAIN \
         --client-only --force
         
 	if [ $? != 0 ]; then
@@ -49,11 +84,11 @@ function create_AD_client {
 # The function then determines if the 
 function createICMPRule {
 
-	APPLICATION="$(echo $LINE | awk -F';' '{print $1}')"
-	PROTO="$(echo $LINE | awk -F';' '{print $2}')"
-	PORT="$(echo $LINE | awk -F';' '{print $3}')"
-	DIRECTION="$(echo $LINE | awk -F';' '{print $4}')"
-	TARGET="$(echo $LINE | awk -F';' '{print $5}')"
+	APPLICATION=${LINE[0]}
+	PROTO=${LINE[1]}
+	PORT=${LINE[2]}
+	DIRECTION=${LINE[3]}
+	TARGET=${LINE[4]}
 	echo "Creating.... $APPLICATION-${DIRECTION^^}-$PROTO-$PORT-$GROUP - (filter: $TARGET)"
 
  	if [[ ${DIRECTION^^} == "IN" ]]; then
@@ -76,7 +111,6 @@ function createICMPRule {
  		echo "# Invalid direction supplied: $DIRECTION"
  	fi
 
-
     ssc entitlements $WHAT --compartment-name $COMPARTMENT \
     --entitlement-name $APPLICATION-${DIRECTION^^}-$PROTO-$PORT-$GROUP --protocol ${PROTO,,} \
     $FILTER
@@ -89,15 +123,15 @@ function createICMPRule {
 }
 
 
-####################  Create SSH Rule  ############################
+#########################  Create SSH Rule  ############################
 #
 function createSSHRule {
 #
-	APPLICATION="$(echo $LINE | awk -F';' '{print $1}')"
-	PROTO="$(echo $LINE | awk -F';' '{print $2}')"
-	PORT="$(echo $LINE | awk -F';' '{print $3}')"
-	DIRECTION="$(echo $LINE | awk -F';' '{print $4}')"
-	TARGET="$(echo $LINE | awk -F';' '{print $5}')"
+	APPLICATION=${LINE[0]}
+	PROTO=${LINE[1]}
+	PORT=${LINE[2]}
+	DIRECTION=${LINE[3]}
+	TARGET=${LINE[4]}
 
 	echo "Creating.... $APPLICATION-${DIRECTION^^}-$PROTO-$PORT-$GROUP - (filter: $TARGET)"
 
@@ -141,11 +175,11 @@ function createSSHRule {
 # constructed differently. 
 function createNetRule {
 
-	APPLICATION="$(echo $LINE | awk -F';' '{print $1}')"
-	PROTO="$(echo $LINE | awk -F';' '{print $2}')"
-	PORT="$(echo $LINE | awk -F';' '{print $3}')"
-	DIRECTION="$(echo $LINE | awk -F';' '{print $4}')"
-	TARGET="$(echo $LINE | awk -F';' '{print $5}')"
+	APPLICATION=${LINE[0]}
+	PROTO=${LINE[1]}
+	PORT=${LINE[2]}
+	DIRECTION=${LINE[3]}
+	TARGET=${LINE[4]}
 
 
 	echo "Creating.... $APPLICATION-${DIRECTION^^}-$PROTO-$PORT-$GROUP - (filter: $TARGET)"
@@ -174,7 +208,7 @@ function createNetRule {
     --entitlement-name $APPLICATION-${DIRECTION^^}-$PROTO-$PORT-$GROUP \
 	--protocol ${PROTO,,} \
 	--port $PORT \
-    $FILTER 
+    $FILTER
 
 	if [ $? != 0 ]; then
 		echo "  !!! FAILED TO CREATE ENTITLEMENT !!!"
@@ -183,14 +217,13 @@ function createNetRule {
 }
 
 
-
 ############## Delete entitlements listed in a file ####################
 
 function delete_old_ent {
 	# Set Variables
 	COMPARTMENT=$1
 
-	#########################  ACTIONS  ################################
+
 	echo
 	echo "################################  Deleting Entitlements  #################################"
 	echo
@@ -199,11 +232,11 @@ function delete_old_ent {
 	--columns 'Entitlement Name' | grep -v -e '^$' | grep -v -e 'role' | grep -v -e 'default' \
 	| grep -v -e 'Entitlement Name' | grep -v -e '--------------' | sed '/^\s*$/d' | sort -r)
 
-	# Put the lis of current entitlements into a file
+	# Put the list of current entitlements into a file
 	echo "$CURRENT_ENTITLEMENTS" > ./tmp/current_entitlements.txt
 	echo
 
-	# Compart the current entitlements one by one agains the list of old entitlement names
+	# Compare the current entitlements one by one against the list of old entitlement names
 
 	while read CURRENT_ENTITLEMENT ; do
 		if grep -q -w "$CURRENT_ENTITLEMENT" ./configs/old_base_ent_intuit.txt ; then
@@ -254,7 +287,7 @@ function deleteNetRule {
 
 ###################### Disable an entitlement ############################
 #
-function disableEnt {
+function disable_entitlement {
 
 	COMPARTMENT=$1
 	ENTITLEMENT=$2
@@ -397,6 +430,19 @@ function backup_ents_to_file {
 	echo; echo "+++++++++++++++++++++++++++++++  BACKUP SUCCESSFUL  +++++++++++++++++++++++++++++++++++++"
 }
 
+########################  Check Compartment Exists  #########################
+# CHECK Compartment VALIDITY  -  Checks if compartment already exists
+function check_compartment_validity {
+	COMPARTMENT=$1
+	COMPARTMENT_LIST=$(ssc compartments show --columns 'Compartment Name' | grep -m1 -e "$COMPARTMENT")
+
+	if [[ "${COMPARTMENT_LIST}" == *"${COMPARTMENT}"* ]]; then
+		echo "  COMPARTMENT CHECK  ====  INVALID COMPARTMENT NAME: Compartment name already exists"; sleep 1
+		INVALID_INPUT=1
+	else
+		echo "  COMPARTMENT CHECK  ====  VALID COMPARTMENT ($COMPARTMENT)"; sleep 1   
+	fi
+}
 
 ########################  Check Version of SSC CLI  ########################
 function check_cli_version {

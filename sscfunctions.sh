@@ -420,7 +420,7 @@ function list_ent_names  {
 ################  Backup entitlements on current compartment  ###############
 function backup_ents_to_file {
 	COMPARTMENT=$1
-	BACKUP_DATE=$(date +%Y-%m-%d)
+	BACKUP_DATE=$(date +%Y-%m-%d-%T)
 	echo
 	echo "############### Backing Up Entitlements for $COMPARTMENT #################"
 	echo

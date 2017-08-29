@@ -71,7 +71,7 @@ else
     INVALID_INPUT=1
 fi
 
-# Check DATACENTER validity
+# Check DATACENTER validity and sets DATASTORE for the right datacenter
 
 case $DATACENTER in
     "LASVEGAS")

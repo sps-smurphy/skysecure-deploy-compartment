@@ -86,8 +86,8 @@ function createICMPRule {
 
 	APPLICATION=${LINE[0]}
 	PROTO=${LINE[1]}
-	PORT=${LINE[2]}
-	DIRECTION=${LINE[3]}
+	DIRECTION=${LINE[2]}
+	PORT=${LINE[3]}
 	TARGET=${LINE[4]}
 	echo "Creating.... $APPLICATION-${DIRECTION^^}-$PROTO-$PORT-$GROUP - (filter: $TARGET)"
 
@@ -111,8 +111,20 @@ function createICMPRule {
  		echo "# Invalid direction supplied: $DIRECTION"
  	fi
 
+    #ssc entitlements $WHAT --compartment-name $COMPARTMENT \
+    # Below will create name by compining componenets from config file
+	#--entitlement-name $APPLICATION-${DIRECTION^^}-$PROTO-$PORT-$GROUP \
+	#--protocol ${PROTO,,} \
+    #$FILTER
+
+    echo "ssc entitlements $WHAT --compartment-name $COMPARTMENT \
+	--entitlement-name $APPLICATION \
+	--protocol ${PROTO,,} \
+    $FILTER"
+
     ssc entitlements $WHAT --compartment-name $COMPARTMENT \
-    --entitlement-name $APPLICATION-${DIRECTION^^}-$PROTO-$PORT-$GROUP --protocol ${PROTO,,} \
+	--entitlement-name $APPLICATION \
+	--protocol ${PROTO,,} \
     $FILTER
 
 	if [ $? != 0 ]; then
@@ -129,8 +141,8 @@ function createSSHRule {
 #
 	APPLICATION=${LINE[0]}
 	PROTO=${LINE[1]}
-	PORT=${LINE[2]}
-	DIRECTION=${LINE[3]}
+	DIRECTION=${LINE[2]}
+	PORT=${LINE[3]}
 	TARGET=${LINE[4]}
 
 	echo "Creating.... $APPLICATION-${DIRECTION^^}-$PROTO-$PORT-$GROUP - (filter: $TARGET)"
@@ -153,9 +165,23 @@ function createSSHRule {
  		fi
  		WHAT="create-netout"
 
-        ssc entitlements $WHAT --compartment-name $COMPARTMENT \
-        --entitlement-name $APPLICATION-${DIRECTION^^}-$PROTO-$PORT-$GROUP --protocol ${PROTO,,} --port $PORT \
-        $FILTER
+    #ssc entitlements $WHAT --compartment-name $COMPARTMENT \
+    # Below will create name by compining componenets from config file
+	#--entitlement-name $APPLICATION-${DIRECTION^^}-$PROTO-$PORT-$GROUP \
+	#--protocol ${PROTO,,} \
+    #$FILTER
+	
+    echo "ssc entitlements $WHAT --compartment-name $COMPARTMENT \
+	--entitlement-name $APPLICATION \
+	--port ${PORT} \
+	--protocol ${PROTO,,} \
+    $FILTER"
+
+    ssc entitlements $WHAT --compartment-name $COMPARTMENT \
+	--entitlement-name $APPLICATION \
+	--port ${PORT} \
+	--protocol ${PROTO,,} \
+    $FILTER
  	else
  		echo "# Invalid direction supplied: $DIRECTION"
  	fi
@@ -177,8 +203,8 @@ function createNetRule {
 
 	APPLICATION=${LINE[0]}
 	PROTO=${LINE[1]}
-	PORT=${LINE[2]}
-	DIRECTION=${LINE[3]}
+	DIRECTION=${LINE[2]}
+	PORT=${LINE[3]}
 	TARGET=${LINE[4]}
 
 
@@ -204,10 +230,23 @@ function createNetRule {
  		echo "# Invalid direction supplied: $DIRECTION"
  	fi
 
-    ssc entitlements $WHAT --compartment-name $COMPARTMENT \
-    --entitlement-name $APPLICATION-${DIRECTION^^}-$PROTO-$PORT-$GROUP \
+    #ssc entitlements $WHAT --compartment-name $COMPARTMENT \
+    # Below will create name by compining componenets from config file
+	#--entitlement-name $APPLICATION-${DIRECTION^^}-$PROTO-$PORT-$GROUP \
+	#--protocol ${PROTO,,} \
+    #$FILTER
+
+
+    echo "ssc entitlements $WHAT --compartment-name $COMPARTMENT \
+	--entitlement-name $APPLICATION \
+	--port ${PORT} \
 	--protocol ${PROTO,,} \
-	--port $PORT \
+    $FILTER"
+
+    ssc entitlements $WHAT --compartment-name $COMPARTMENT \
+	--entitlement-name $APPLICATION \
+	--port ${PORT} \
+	--protocol ${PROTO,,} \
     $FILTER
 
 	if [ $? != 0 ]; then
@@ -227,21 +266,26 @@ function delete_old_ent {
 	echo
 	echo "################################  Deleting Entitlements  #################################"
 	echo
-	# Read all the entitlement names in a compartment excluding default and AD role entitlements
-	CURRENT_ENTITLEMENTS=$(ssc entitlements show --compartment-name $COMPARTMENT \
-	--columns 'Entitlement Name' | grep -v -e '^$' | grep -v -e 'role' | grep -v -e 'default' \
-	| grep -v -e 'Entitlement Name' | grep -v -e '--------------' | sed '/^\s*$/d' | sort -r)
 
-	# Put the list of current entitlements into a file
-	echo "$CURRENT_ENTITLEMENTS" > ./tmp/current_entitlements.txt
-	echo
+
+	# Read all the entitlement names in a compartment excluding default and AD role entitlements
+	#CURRENT_ENTITLEMENTS=$(ssc entitlements show --compartment-name $COMPARTMENT \
+	#--columns 'Entitlement Name' | grep -v -e '^$' | grep -v -e 'role' | grep -v -e 'default' \
+	#| grep -v -e 'Entitlement Name' | grep -v -e '--------------' | sed '/^\s*$/d' | sort -r)
+	ssc entitlements show --compartment-name $COMPARTMENT --columns direction,name,proto,port,source | tr -d '\n' | perl -pe 's/Outbound/\nout/g' | perl -pe 's/Inbound/\nin/g' | tail -n +2 | perl -pe 's/[ ]+/, /g' | perl -pe 's/, $//' | sed -e  's/, /;/' -e  's/, /;/' -e  's/, /;/' -e  's/, /;/'  | awk -F';' '{print $2";"$3";"$1";"$4";"substr($0, index($0,$5))}' | tr -d  ' ' | grep -v -e 'role' | sort > ./tmp/current_entitlements.txt
+
 
 	# Compare the current entitlements one by one against the list of old entitlement names
-
-	while read CURRENT_ENTITLEMENT ; do
-		if grep -q -w "$CURRENT_ENTITLEMENT" ./configs/old_base_ent_intuit.txt ; then
-			echo; echo "MATCH !!! $CURRENT_ENTITLEMENT - NOW DELETING"
-			ssc entitlements delete --compartment-name $COMPARTMENT --entitlement-name $CURRENT_ENTITLEMENT --force
+	while IFS=';' read -r -a LINE; do
+		if grep -q "${LINE[0]}" ./configs/old_base_entitlements.txt ; then
+			echo; echo "LIST MATCH !!! ${LINE[0]}"
+			echo "${LINE[0]};${LINE[1]};${LINE[2]};${LINE[3]};${LINE[4]}"
+			if grep -q -x "${LINE[0]};${LINE[1]};${LINE[2]};${LINE[3]};${LINE[4]}" ./configs/BASE.txt; then
+				echo "Exactly the same as the one in the BASE.csv"
+			else
+				echo "MATCH !!! ${LINE[0]};${LINE[1]};${LINE[2]};${LINE[3]};${LINE[4]} - NOW DELETING"
+			ssc entitlements delete --compartment-name $COMPARTMENT --entitlement-name ${LINE[0]} --force
+			fi
 		fi
 	done < ./tmp/current_entitlements.txt
 
@@ -329,8 +373,18 @@ function enableEnt {
 #
 function showEnts {
 	echo
-	ssc entitlements show --compartment-name $COMPARTMENT \
-	--columns 'Entitlement Name','Protocol','Port','Direction','Source or Destination'
+	#ssc entitlements show --compartment-name $COMPARTMENT \
+	#--columns 'Entitlement Name','Protocol','Port','Direction','Source or Destination'
+
+ssc entitlements show --compartment-name $COMPARTMENT --columns direction,name,proto,port,source | \
+tr -d '\n' | \
+perl -pe 's/Outbound/\nout/g' | \
+perl -pe 's/Inbound/\nin/g' | tail -n +2 | \
+perl -pe 's/[ ]+/, /g' | \
+perl -pe 's/, $//' | \
+sed -e  's/, /;/' -e  's/, /;/' -e  's/, /;/' -e  's/, /;/'  | \
+awk -F';' '{print $2";"$3";"$1";"$4";"substr($0, index($0,$5))}' | \
+tr -d  ' '
 }
 
 
@@ -416,17 +470,39 @@ function list_ent_names  {
 	echo "$ALL_ENTITLEMENTS"
 }
 
+########################    Read Current Entitlements    #####################
+function read_current_entitlements {
+	ssc entitlements show --compartment-name $COMPARTMENT --columns direction,name,proto,port,source | \
+	tr -d '\n' | \
+	perl -pe 's/Outbound/\nout/g' | \
+	perl -pe 's/Inbound/\nin/g' | \
+	tail -n +2 | \
+	perl -pe 's/[ ]+/, /g' | \
+	perl -pe 's/, $//' | \
+	sed -e  's/, /;/' -e  's/, /;/' -e  's/, /;/' -e  's/, /;/'  | \
+	awk -F';' '{print $2";"$3";"$1";"$4";"substr($0, index($0,$5))}' | \
+	tr -d  ' ' | sort > ./tmp/current_entitlements.txt
+}
 
 ################  Backup entitlements on current compartment  ###############
 function backup_ents_to_file {
 	COMPARTMENT=$1
 	BACKUP_DATE=$(date +%Y-%m-%d-%T)
 	echo
-	echo "############### Backing Up Entitlements for $COMPARTMENT #################"
+	echo "##################### Backing Up Entitlements for $COMPARTMENT ######################"
 	echo
-	BACKUP="$(ssc entitlements show --compartment-name $COMPARTMENT \
-	--columns 'Entitlement Name','Protocol','Port','Direction','Source or Destination')"
-	echo "$BACKUP" > ./backups/"$COMPARTMENT"_backup_"$BACKUP_DATE".txt
+	ssc entitlements show --compartment-name $COMPARTMENT --columns direction,name,proto,port,source | \
+	tr -d '\n' | \
+	perl -pe 's/Outbound/\nout/g' | \
+	perl -pe 's/Inbound/\nin/g' | \
+	tail -n +2 | \
+	perl -pe 's/[ ]+/, /g' | \
+	perl -pe 's/, $//' | \
+	sed -e  's/, /;/' -e  's/, /;/' -e  's/, /;/' -e  's/, /;/'  | \
+	awk -F';' '{print $2";"$3";"$1";"$4";"substr($0, index($0,$5))}' | \
+	tr -d  ' ' | sort > ./backups/"$COMPARTMENT"_backup_"$BACKUP_DATE".txt
+	#BACKUP="$(ssc entitlements show --compartment-name $COMPARTMENT \
+	#--columns 'Entitlement Name','Protocol','Port','Direction','Source or Destination')"
 	echo; echo "+++++++++++++++++++++++++++++++  BACKUP SUCCESSFUL  +++++++++++++++++++++++++++++++++++++"
 }
 

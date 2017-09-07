@@ -15,7 +15,7 @@ sleep 1
 
 if [[ "${COMPARTMENT_LIST}" == *"${COMPARTMENT}"* ]]; then
     echo
-    echo "  Compartment $COMPARTMENT exists and is valid!!"
+    echo "              Compartment $COMPARTMENT exists and is valid!!"
 else
     echo;echo "Compartment doesn't exist.  Please check the spelling and retry."
     exit 2
@@ -25,7 +25,18 @@ fi
 backup_ents_to_file $COMPARTMENT
 sleep 1
 
-# For each entitlement name in the file old_base_ent_intuit.txt delete that entitlement
+# For each entitlement name in the file old_base_entitlements.txt delete that entitlement
+# Read the existing entitlements into a file
+ssc entitlements show --compartment-name $COMPARTMENT --columns direction,name,proto,port,source | \
+tr -d '\n' | \
+perl -pe 's/Outbound/\nout/g' | \
+perl -pe 's/Inbound/\nin/g' | \
+tail -n +2 | \
+perl -pe 's/[ ]+/, /g' | \
+perl -pe 's/, $//' | \
+sed -e  's/, /;/' -e  's/, /;/' -e  's/, /;/' -e  's/, /;/'  | \
+awk -F';' '{print $2";"$3";"$1";"$4";"substr($0, index($0,$5))}' | \
+tr -d  ' ' | sort > ./tmp/current-entitlements1.txt
 delete_old_ent $COMPARTMENT
 sleep 1
 

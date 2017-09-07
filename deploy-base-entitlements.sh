@@ -8,12 +8,9 @@ COMPARTMENT=$1              # Compartment name
 APP=${2^^}                  # Application name (Currently BASE, SPLUNK, or JIRA)
 
 GROUP="BASE"                # Set group these entitlements will be part of
-FILE="./configs/BASE.csv"   # Location of file containing BASE entitlements
-DOMAIN="corp.intuit.com"    # AD Domain for Active Director Client role
+FILE="./configs/BASE.txt"   # Location of file containing BASE entitlements
+DOMAIN="corp.foo.com"       # AD Domain for Active Director Client role
 ################################# ACTIONS #################################
-
-
-
 
 # Deploy BASE entitlements from config file
 
@@ -21,19 +18,21 @@ DOMAIN="corp.intuit.com"    # AD Domain for Active Director Client role
 echo; echo; echo
 echo "################################### CREATING BASE ENTITLEMENTS #####################################"
 sleep 1
+read_current_entitlements
+#Compare current entitlements to BASE entitlements and add the missing BASE entitlements to leftover-entitlements.txt
+comm -2 -3 $FILE ./tmp/current_entitlements.txt > ./tmp/leftover-entitlements.txt
 # Read entitlements line by line from config file
 # Configuration file format: APPLICATION(0);PROTOCOL(1);PORT(2);DIRECTION(3);TARGET(4)
 
 while IFS=';' read -r -a LINE; do
-    echo
-        if [[ ${LINE[0]} == *"ssh"* ]]; then
+    if [[ ${LINE[0]} == *"ssh"* ]]; then
             createSSHRule $LINE
-        elif [[ ${LINE[1]} == "ICMP" ]]; then
+    elif [[ ${LINE[1]} == "ICMP" ]]; then
             createICMPRule $LINE
-        else
+    else
             createNetRule $LINE
-        fi
-done < $FILE
+    fi
+done < ./tmp/leftover-entitlements.txt
        
 # Creating AD Client Role
 create_AD_client $COMPARTMENT $DOMAIN
@@ -55,4 +54,6 @@ fi
 
 echo
 echo "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  DONE CREATING BASE ENTITLEMENTS  >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+#Cleanup of temp files
+
 sleep 2

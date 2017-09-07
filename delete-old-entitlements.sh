@@ -16,7 +16,7 @@ echo
 # If the name does match then delete it and go on to the next one in the list
 
 while read CURRENT_ENTITLEMENT ; do
-    if grep -q -w "$CURRENT_ENTITLEMENT" old_base_ent_intuit.txt ; then
+    if grep -q -w "$CURRENT_ENTITLEMENT" old_base_entitlements.txt ; then
         echo "MATCH !!! $CURRENT_ENTITLEMENT - NOW DELETING"
 	  	echo "ssc entitlements delete --compartment-name $COMPARTMENT --entitlement-name $CURRENT_ENTITLEMENT --force"
 	 	ssc entitlements delete --compartment-name $COMPARTMENT --entitlement-name $CURRENT_ENTITLEMENT --force
@@ -29,7 +29,7 @@ done < current_entitlements.txt
 # 	if [[ "$CURRENT_ENTITLEMENTS" =~ "$OLD_BASE_ENT" ]]; then
 # 		echo "MATCH !!! $OLD_BASE_ENT"
 # 	fi
-# done < old_base_ent_intuit.txt
+# done < old_base_entitlements.txt
 
 
 
